@@ -119,18 +119,7 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: #ff4444;
-            animation: pulse 2s infinite;
-        }
-
-        .status-dot.connected {
             background: #4CAF50;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
         }
 
         .schedule-grid {
@@ -369,25 +358,6 @@
         .legend-booked {
             background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
         }
-
-        .setup-notice {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px;
-            text-align: center;
-        }
-
-        .setup-notice h3 {
-            color: #856404;
-            margin-bottom: 10px;
-        }
-
-        .setup-notice p {
-            color: #664d03;
-            line-height: 1.5;
-        }
     </style>
 </head>
 <body>
@@ -397,13 +367,6 @@
             <p>클릭해서 컴퓨터실 사용 예약, 예약 변경을 하실 수 있습니다.</p>
         </div>
 
-        <!-- Firebase 설정 안내 -->
-        <div class="setup-notice" id="setupNotice">
-            <h3>🔧 Firebase 설정이 필요합니다</h3>
-            <p>실시간 공유 기능을 사용하려면 Firebase 설정을 완료해주세요.<br>
-            설정 전까지는 로컬 저장 모드로 작동합니다.</p>
-        </div>
-
         <div class="controls">
             <div class="nav-buttons">
                 <button class="btn btn-primary" onclick="changeWeek(-1)">◀ 이전 주</button>
@@ -411,8 +374,8 @@
             </div>
             <div class="current-month" id="currentWeek"></div>
             <div class="connection-status">
-                <div class="status-dot" id="statusDot"></div>
-                <span id="statusText">연결 확인 중...</span>
+                <div class="status-dot"></div>
+                <span>실시간 연결됨</span>
             </div>
         </div>
 
@@ -469,9 +432,8 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
     <script type="module">
-        // Firebase 설정 (여기에 실제 Firebase 설정을 입력하세요)
+        // Firebase 설정
         const firebaseConfig = {
             apiKey: "AIzaSyAImzPCq8zUhrqR4buw0uAcxlRefg-xb_w",
             authDomain: "bongae-computer-room.firebaseapp.com",
@@ -482,48 +444,10 @@
             appId: "1:688386683286:web:dfc44a1b2a7a3d28126db7"
         };
 
-        // Firebase가 설정되었는지 확인
-        const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
-        
-        if (isFirebaseConfigured) {
-            // Firebase 초기화 (실제 설정이 있을 때만)
-            import('https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js').then(({ initializeApp }) => {
-                return import('https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js');
-            }).then(({ getDatabase, ref, set, onValue, remove }) => {
-                const app = initializeApp(firebaseConfig);
-                const database = getDatabase(app);
-                window.firebaseDB = database;
-                window.firebaseRef = ref;
-                window.firebaseSet = set;
-                window.firebaseOnValue = onValue;
-                window.firebaseRemove = remove;
-                
-                // Firebase 연결됨
-                updateConnectionStatus(true);
-                loadFromFirebase();
-                // 설정 완료 시 안내 메시지 숨기기
-                setTimeout(() => {
-                    const setupNotice = document.getElementById('setupNotice');
-                    if (setupNotice) {
-                        setupNotice.style.display = 'none';
-                    }
-                }, 1000);
-            }).catch(error => {
-                console.error('Firebase 초기화 오류:', error);
-                updateConnectionStatus(false);
-                loadFromLocalStorage();
-            });
-        } else {
-            // Firebase 설정 안됨 - 로컬 모드
-            updateConnectionStatus(false);
-            loadFromLocalStorage();
-        }
-
         // 전역 변수
         let currentWeekStart = new Date();
         let currentTimeSlot = null;
         let scheduleData = {};
-        let isFirebaseMode = isFirebaseConfigured;
         
         // 시간표 설정
         const timeSlots = [
@@ -539,18 +463,24 @@
         
         const weekDays = ['월', '화', '수', '목', '금'];
 
-        // 연결 상태 업데이트
-        function updateConnectionStatus(connected) {
-            const statusDot = document.getElementById('statusDot');
-            const statusText = document.getElementById('statusText');
+        // Firebase 초기화
+        try {
+            const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js');
+            const { getDatabase, ref, set, onValue, remove } = await import('https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js');
             
-            if (connected) {
-                statusDot.classList.add('connected');
-                statusText.textContent = '실시간 연결됨';
-            } else {
-                statusDot.classList.remove('connected');
-                statusText.textContent = '로컬 모드';
-            }
+            const app = initializeApp(firebaseConfig);
+            const database = getDatabase(app);
+            
+            window.firebaseDB = database;
+            window.firebaseRef = ref;
+            window.firebaseSet = set;
+            window.firebaseOnValue = onValue;
+            window.firebaseRemove = remove;
+            
+            loadFromFirebase();
+        } catch (error) {
+            console.error('Firebase 초기화 오류:', error);
+            loadFromLocalStorage();
         }
 
         // Firebase에서 데이터 로드
@@ -735,7 +665,6 @@
         // 모달 닫기
         function closeModal() {
             document.getElementById('bookingModal').style.display = 'none';
-            // 입력 필드 초기화
             document.getElementById('teacherName').value = '';
             document.getElementById('subjectName').value = '';
             document.getElementById('password').value = '';
@@ -781,26 +710,23 @@
                 timestamp: new Date().toISOString()
             };
             
-            // Firebase 또는 로컬 저장
+            // Firebase 저장 시도
             let saved = false;
-            if (isFirebaseMode && window.firebaseDB) {
+            if (window.firebaseDB) {
                 saved = await saveToFirebase(currentTimeSlot, bookingData);
-                if (!saved) {
-                    // Firebase 실패시 로컬 저장
-                    scheduleData[currentTimeSlot] = bookingData;
-                    saveToLocalStorage();
-                }
-            } else {
+            }
+            
+            if (!saved) {
+                // Firebase 실패시 로컬 저장
                 scheduleData[currentTimeSlot] = bookingData;
-                saved = saveToLocalStorage();
+                saveToLocalStorage();
             }
             
             closeModal();
             
             // 성공 메시지
             const message = existingBooking ? '예약이 수정되었습니다!' : '예약이 완료되었습니다!';
-            const mode = (isFirebaseMode && window.firebaseDB && saved) ? '실시간 저장' : '로컬 저장';
-            showMessage(`${message} (${mode})`, '#4caf50', '#45a049');
+            showMessage(message, '#4caf50', '#45a049');
         }
         
         // 예약 삭제
@@ -819,27 +745,21 @@
             }
             
             if (confirm('정말 이 예약을 삭제하시겠습니까?')) {
-                // Firebase 또는 로컬 삭제
+                // Firebase 삭제 시도
                 let deleted = false;
-                if (isFirebaseMode && window.firebaseDB) {
+                if (window.firebaseDB) {
                     deleted = await deleteFromFirebase(currentTimeSlot);
-                    if (!deleted) {
-                        // Firebase 실패시 로컬 삭제
-                        delete scheduleData[currentTimeSlot];
-                        saveToLocalStorage();
-                        updateScheduleTable();
-                    }
-                } else {
+                }
+                
+                if (!deleted) {
+                    // Firebase 실패시 로컬 삭제
                     delete scheduleData[currentTimeSlot];
-                    deleted = saveToLocalStorage();
+                    saveToLocalStorage();
                     updateScheduleTable();
                 }
                 
                 closeModal();
-                
-                // 삭제 메시지
-                const mode = (isFirebaseMode && window.firebaseDB && deleted) ? '실시간 삭제' : '로컬 삭제';
-                showMessage(`예약이 삭제되었습니다. (${mode})`, '#f44336', '#d32f2f');
+                showMessage('예약이 삭제되었습니다.', '#f44336', '#d32f2f');
             }
         }
         
