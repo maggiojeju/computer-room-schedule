@@ -501,7 +501,13 @@
                 // Firebase 연결됨
                 updateConnectionStatus(true);
                 loadFromFirebase();
-                document.getElementById('setupNotice').style.display = 'none';
+                // 설정 완료 시 안내 메시지 숨기기
+                setTimeout(() => {
+                    const setupNotice = document.getElementById('setupNotice');
+                    if (setupNotice) {
+                        setupNotice.style.display = 'none';
+                }
+            }, 1000);
             }).catch(error => {
                 console.error('Firebase 초기화 오류:', error);
                 updateConnectionStatus(false);
