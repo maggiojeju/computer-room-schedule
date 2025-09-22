@@ -1,9 +1,864 @@
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
-};
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>봉개초 컴퓨터실 일정표</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+            color: white;
+        }
+
+        .current-month {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+            padding: 8px 15px;
+            border-radius: 20px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #4CAF50;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .schedule-grid {
+            padding: 20px;
+        }
+
+        .time-table {
+            display: grid;
+            grid-template-columns: 100px repeat(5, 1fr);
+            gap: 2px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .header-cell {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .time-cell {
+            background: linear-gradient(135deg, #455a64 0%, #37474f 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .schedule-cell {
+            background: white;
+            padding: 15px;
+            min-height: 80px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            border: 2px solid transparent;
+        }
+
+        .schedule-cell:hover {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f1f8e9 100%);
+            transform: scale(1.02);
+            border-color: #2196F3;
+        }
+
+        .schedule-cell.booked {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .schedule-cell.booked:hover {
+            background: linear-gradient(135deg, #45a049 0%, #388e3c 100%);
+        }
+
+        .booking-info {
+            font-size: 0.9em;
+        }
+
+        .teacher-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .subject-name {
+            font-size: 0.8em;
+            opacity: 0.9;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+
+        .close {
+            color: white;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .close:hover {
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .time-table {
+                font-size: 0.8em;
+            }
+            
+            .controls {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .legend-available {
+            background: white;
+            border: 2px solid #e9ecef;
+        }
+
+        .legend-booked {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+        }
+
+        .setup-notice {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px;
+            text-align: center;
+        }
+
+        .setup-notice h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .setup-notice p {
+            color: #664d03;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖥️ 봉개초 컴퓨터실 일정표</h1>
+            <p>클릭해서 컴퓨터실 사용 예약, 예약 변경을 하실 수 있습니다.</p>
+        </div>
+
+        <!-- Firebase 설정 안내 -->
+        <div class="setup-notice" id="setupNotice">
+            <h3>🔧 Firebase 설정이 필요합니다</h3>
+            <p>실시간 공유 기능을 사용하려면 Firebase 설정을 완료해주세요.<br>
+            설정 전까지는 로컬 저장 모드로 작동합니다.</p>
+        </div>
+
+        <div class="controls">
+            <div class="nav-buttons">
+                <button class="btn btn-primary" onclick="changeWeek(-1)">◀ 이전 주</button>
+                <button class="btn btn-primary" onclick="changeWeek(1)">다음 주 ▶</button>
+            </div>
+            <div class="current-month" id="currentWeek"></div>
+            <div class="connection-status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">연결 확인 중...</span>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color legend-available"></div>
+                <span>예약 가능</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color legend-booked"></div>
+                <span>예약됨</span>
+            </div>
+        </div>
+
+        <div class="schedule-grid">
+            <div class="time-table" id="scheduleTable"></div>
+        </div>
+    </div>
+
+    <!-- 예약 모달 -->
+    <div id="bookingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close">&times;</span>
+                <h2 id="modalTitle">컴퓨터실 예약</h2>
+            </div>
+            <div class="modal-body">
+                <div id="timeInfo" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px; font-weight: bold;"></div>
+                
+                <div class="form-group">
+                    <label for="teacherName">선생님 성함:</label>
+                    <input type="text" id="teacherName" placeholder="예: 김선생님">
+                </div>
+                
+                <div class="form-group">
+                    <label for="subjectName">수업 내용:</label>
+                    <input type="text" id="subjectName" placeholder="예: 3학년 컴퓨터 수업, 코딩 교육 등">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">비밀번호 (수정/삭제용):</label>
+                    <input type="password" id="password" placeholder="4자리 숫자로 입력해주세요">
+                    <small style="color: #666; font-size: 0.8em; margin-top: 5px; display: block;">
+                        * 나중에 수정하거나 삭제할 때 필요합니다
+                    </small>
+                </div>
+                
+                <div class="modal-buttons">
+                    <button class="btn btn-success" onclick="saveBooking()">예약하기</button>
+                    <button class="btn btn-danger" id="deleteBtn" onclick="deleteBooking()" style="display: none;">삭제하기</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Firebase 설정 (여기에 실제 Firebase 설정을 입력하세요)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Firebase가 설정되었는지 확인
+        const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
+        
+        if (isFirebaseConfigured) {
+            // Firebase 초기화 (실제 설정이 있을 때만)
+            import('https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js').then(({ initializeApp }) => {
+                return import('https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js');
+            }).then(({ getDatabase, ref, set, onValue, remove }) => {
+                const app = initializeApp(firebaseConfig);
+                const database = getDatabase(app);
+                window.firebaseDB = database;
+                window.firebaseRef = ref;
+                window.firebaseSet = set;
+                window.firebaseOnValue = onValue;
+                window.firebaseRemove = remove;
+                
+                // Firebase 연결됨
+                updateConnectionStatus(true);
+                loadFromFirebase();
+                document.getElementById('setupNotice').style.display = 'none';
+            }).catch(error => {
+                console.error('Firebase 초기화 오류:', error);
+                updateConnectionStatus(false);
+                loadFromLocalStorage();
+            });
+        } else {
+            // Firebase 설정 안됨 - 로컬 모드
+            updateConnectionStatus(false);
+            loadFromLocalStorage();
+        }
+
+        // 전역 변수
+        let currentWeekStart = new Date();
+        let currentTimeSlot = null;
+        let scheduleData = {};
+        let isFirebaseMode = isFirebaseConfigured;
+        
+        // 시간표 설정
+        const timeSlots = [
+            '09:00-09:40',
+            '09:50-10:30', 
+            '10:40-11:20',
+            '11:30-12:10',
+            '13:00-13:40',
+            '13:50-14:30',
+            '14:40-15:20',
+            '15:30-16:10'
+        ];
+        
+        const weekDays = ['월', '화', '수', '목', '금'];
+
+        // 연결 상태 업데이트
+        function updateConnectionStatus(connected) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            if (connected) {
+                statusDot.classList.add('connected');
+                statusText.textContent = '실시간 연결됨';
+            } else {
+                statusDot.classList.remove('connected');
+                statusText.textContent = '로컬 모드';
+            }
+        }
+
+        // Firebase에서 데이터 로드
+        function loadFromFirebase() {
+            if (!window.firebaseDB) return;
+            
+            const schedulesRef = window.firebaseRef(window.firebaseDB, 'schedules');
+            window.firebaseOnValue(schedulesRef, (snapshot) => {
+                const data = snapshot.val();
+                scheduleData = data || {};
+                updateScheduleTable();
+                console.log('Firebase에서 데이터 로드:', Object.keys(scheduleData).length, '개 예약');
+            });
+        }
+
+        // Firebase에 데이터 저장
+        async function saveToFirebase(slotKey, bookingData) {
+            if (!window.firebaseDB) return false;
+            
+            try {
+                const scheduleRef = window.firebaseRef(window.firebaseDB, `schedules/${slotKey}`);
+                await window.firebaseSet(scheduleRef, bookingData);
+                return true;
+            } catch (error) {
+                console.error('Firebase 저장 오류:', error);
+                return false;
+            }
+        }
+
+        // Firebase에서 데이터 삭제
+        async function deleteFromFirebase(slotKey) {
+            if (!window.firebaseDB) return false;
+            
+            try {
+                const scheduleRef = window.firebaseRef(window.firebaseDB, `schedules/${slotKey}`);
+                await window.firebaseRemove(scheduleRef);
+                return true;
+            } catch (error) {
+                console.error('Firebase 삭제 오류:', error);
+                return false;
+            }
+        }
+
+        // 로컬 스토리지에서 데이터 로드
+        function loadFromLocalStorage() {
+            try {
+                const savedData = localStorage.getItem('bongae_computer_room_schedule');
+                if (savedData) {
+                    scheduleData = JSON.parse(savedData);
+                    console.log('로컬 데이터 로드:', Object.keys(scheduleData).length, '개 예약');
+                }
+                updateScheduleTable();
+            } catch (error) {
+                console.error('로컬 데이터 로드 오류:', error);
+                scheduleData = {};
+            }
+        }
+
+        // 로컬 스토리지에 데이터 저장
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('bongae_computer_room_schedule', JSON.stringify(scheduleData));
+                return true;
+            } catch (error) {
+                console.error('로컬 데이터 저장 오류:', error);
+                return false;
+            }
+        }
+
+        // 주의 시작일 구하기 (월요일)
+        function getWeekStart(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
+        
+        // 날짜 포맷팅
+        function formatDate(date) {
+            return `${date.getMonth() + 1}/${date.getDate()}`;
+        }
+        
+        // 주 변경
+        function changeWeek(direction) {
+            currentWeekStart.setDate(currentWeekStart.getDate() + (direction * 7));
+            updateScheduleTable();
+        }
+        
+        // 일정표 업데이트
+        function updateScheduleTable() {
+            const weekStart = getWeekStart(currentWeekStart);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 4);
+            
+            document.getElementById('currentWeek').textContent = 
+                `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
+            
+            const table = document.getElementById('scheduleTable');
+            table.innerHTML = '';
+            
+            // 헤더 생성
+            const emptyHeader = document.createElement('div');
+            emptyHeader.className = 'header-cell';
+            emptyHeader.textContent = '시간';
+            table.appendChild(emptyHeader);
+            
+            // 요일 헤더
+            weekDays.forEach((day, index) => {
+                const date = new Date(weekStart);
+                date.setDate(weekStart.getDate() + index);
+                
+                const header = document.createElement('div');
+                header.className = 'header-cell';
+                header.innerHTML = `${day}<br><small>${formatDate(date)}</small>`;
+                table.appendChild(header);
+            });
+            
+            // 시간대별 행 생성
+            timeSlots.forEach(time => {
+                // 시간 셀
+                const timeCell = document.createElement('div');
+                timeCell.className = 'time-cell';
+                timeCell.textContent = time;
+                table.appendChild(timeCell);
+                
+                // 요일별 일정 셀
+                weekDays.forEach((day, dayIndex) => {
+                    const date = new Date(weekStart);
+                    date.setDate(weekStart.getDate() + dayIndex);
+                    const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+                    const slotKey = `${dateKey}-${time}`;
+                    
+                    const cell = document.createElement('div');
+                    cell.className = 'schedule-cell';
+                    cell.onclick = () => openModal(slotKey, `${day} ${formatDate(date)} ${time}`);
+                    
+                    const booking = scheduleData[slotKey];
+                    if (booking) {
+                        cell.className += ' booked';
+                        cell.innerHTML = `
+                            <div class="booking-info">
+                                <div class="teacher-name">${booking.teacher}</div>
+                                <div class="subject-name">${booking.subject}</div>
+                            </div>
+                        `;
+                    } else {
+                        cell.innerHTML = '<div style="text-align: center; color: #999;">클릭하여<br>예약</div>';
+                    }
+                    
+                    table.appendChild(cell);
+                });
+            });
+        }
+        
+        // 모달 열기
+        function openModal(slotKey, timeInfo) {
+            currentTimeSlot = slotKey;
+            const modal = document.getElementById('bookingModal');
+            const booking = scheduleData[slotKey];
+            
+            document.getElementById('timeInfo').textContent = timeInfo;
+            
+            if (booking) {
+                document.getElementById('modalTitle').textContent = '예약 수정/삭제';
+                document.getElementById('teacherName').value = booking.teacher;
+                document.getElementById('subjectName').value = booking.subject;
+                document.getElementById('password').value = '';
+                document.getElementById('password').placeholder = '기존 비밀번호를 입력하세요';
+                document.getElementById('deleteBtn').style.display = 'inline-block';
+            } else {
+                document.getElementById('modalTitle').textContent = '컴퓨터실 예약';
+                document.getElementById('teacherName').value = '';
+                document.getElementById('subjectName').value = '';
+                document.getElementById('password').value = '';
+                document.getElementById('password').placeholder = '4자리 숫자로 입력해주세요';
+                document.getElementById('deleteBtn').style.display = 'none';
+            }
+            
+            modal.style.display = 'block';
+        }
+        
+        // 모달 닫기
+        function closeModal() {
+            document.getElementById('bookingModal').style.display = 'none';
+            // 입력 필드 초기화
+            document.getElementById('teacherName').value = '';
+            document.getElementById('subjectName').value = '';
+            document.getElementById('password').value = '';
+        }
+        
+        // 예약 저장
+        async function saveBooking() {
+            const teacher = document.getElementById('teacherName').value.trim();
+            const subject = document.getElementById('subjectName').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const existingBooking = scheduleData[currentTimeSlot];
+            
+            if (!teacher) {
+                alert('선생님 성함을 입력해주세요.');
+                return;
+            }
+            
+            if (!subject) {
+                alert('수업 내용을 입력해주세요.');
+                return;
+            }
+            
+            if (!password) {
+                alert('비밀번호를 입력해주세요.');
+                return;
+            }
+            
+            if (password.length !== 4 || !/^\d{4}$/.test(password)) {
+                alert('비밀번호는 4자리 숫자여야 합니다.');
+                return;
+            }
+            
+            // 기존 예약이 있는 경우 비밀번호 확인
+            if (existingBooking && existingBooking.password !== password) {
+                alert('비밀번호가 일치하지 않습니다.');
+                return;
+            }
+            
+            const bookingData = {
+                teacher: teacher,
+                subject: subject,
+                password: password,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Firebase 또는 로컬 저장
+            let saved = false;
+            if (isFirebaseMode && window.firebaseDB) {
+                saved = await saveToFirebase(currentTimeSlot, bookingData);
+                if (!saved) {
+                    // Firebase 실패시 로컬 저장
+                    scheduleData[currentTimeSlot] = bookingData;
+                    saveToLocalStorage();
+                }
+            } else {
+                scheduleData[currentTimeSlot] = bookingData;
+                saved = saveToLocalStorage();
+            }
+            
+            closeModal();
+            
+            // 성공 메시지
+            const message = existingBooking ? '예약이 수정되었습니다!' : '예약이 완료되었습니다!';
+            const mode = (isFirebaseMode && window.firebaseDB && saved) ? '실시간 저장' : '로컬 저장';
+            showMessage(`${message} (${mode})`, '#4caf50', '#45a049');
+        }
+        
+        // 예약 삭제
+        async function deleteBooking() {
+            const password = document.getElementById('password').value.trim();
+            const existingBooking = scheduleData[currentTimeSlot];
+            
+            if (!password) {
+                alert('비밀번호를 입력해주세요.');
+                return;
+            }
+            
+            if (!existingBooking || existingBooking.password !== password) {
+                alert('비밀번호가 일치하지 않습니다.');
+                return;
+            }
+            
+            if (confirm('정말 이 예약을 삭제하시겠습니까?')) {
+                // Firebase 또는 로컬 삭제
+                let deleted = false;
+                if (isFirebaseMode && window.firebaseDB) {
+                    deleted = await deleteFromFirebase(currentTimeSlot);
+                    if (!deleted) {
+                        // Firebase 실패시 로컬 삭제
+                        delete scheduleData[currentTimeSlot];
+                        saveToLocalStorage();
+                        updateScheduleTable();
+                    }
+                } else {
+                    delete scheduleData[currentTimeSlot];
+                    deleted = saveToLocalStorage();
+                    updateScheduleTable();
+                }
+                
+                closeModal();
+                
+                // 삭제 메시지
+                const mode = (isFirebaseMode && window.firebaseDB && deleted) ? '실시간 삭제' : '로컬 삭제';
+                showMessage(`예약이 삭제되었습니다. (${mode})`, '#f44336', '#d32f2f');
+            }
+        }
+        
+        // 메시지 표시 함수
+        function showMessage(text, color1, color2) {
+            const message = document.createElement('div');
+            message.style.cssText = `
+                position: fixed; top: 20px; right: 20px; z-index: 2000;
+                background: linear-gradient(135deg, ${color1} 0%, ${color2} 100%);
+                color: white; padding: 15px 25px; border-radius: 10px;
+                box-shadow: 0 5px 15px rgba(244, 67, 54, 0.3);
+                font-weight: bold;
+                animation: slideIn 0.3s ease;
+            `;
+            message.textContent = text;
+            document.body.appendChild(message);
+            
+            setTimeout(() => {
+                message.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    if (document.body.contains(message)) {
+                        document.body.removeChild(message);
+                    }
+                }, 300);
+            }, 2700);
+        }
+        
+        // 모달 외부 클릭시 닫
